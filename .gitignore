@@ -12,3 +12,7 @@ mlartifacts/
 build/
 .DS_Store
 .ipynb_checkpoints/
+
+# Local video scripts
+VIDEO_SCRIPT.*
+report/VIDEO_SCRIPT.*
