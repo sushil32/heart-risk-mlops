@@ -1,0 +1,159 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      fast:
+        description: "Use single-point grids (quick training)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  IMAGE_NAME: heart-risk-api
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install ruff==0.7.2
+      - name: ruff check
+        run: ruff check --output-format=github .
+      - name: ruff format --check
+        run: ruff format --check .
+
+  test:
+    name: Unit tests (pytest)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Run tests
+        run: |
+          mkdir -p test-results
+          pytest -v --junitxml=test-results/junit.xml \
+                 --cov=heartrisk --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+
+  train:
+    name: Data + EDA + model training
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Download and clean dataset
+        run: python scripts/download_data.py --force
+      - name: EDA
+        run: python scripts/eda.py
+      - name: Train and track with MLflow
+        run: |
+          python -m heartrisk.train ${{ inputs.fast && '--fast' || '' }} | tee training.log
+      - name: Quality gate (champion CV ROC-AUC >= 0.85)
+        run: |
+          python - <<'EOF'
+          import json, sys
+          m = json.load(open("models/metadata.json"))
+          auc = m["metrics"]["cv_roc_auc"]
+          print(f"champion={m['model_name']} cv_roc_auc={auc:.4f}")
+          sys.exit(0 if auc >= 0.85 else "Model below quality gate")
+          EOF
+      - name: Job summary
+        run: |
+          echo "### Model comparison" >> $GITHUB_STEP_SUMMARY
+          python -c "import pandas as pd; print(pd.read_csv('reports/model_comparison.csv', index_col=0).drop(columns='run_id').round(4).to_markdown())" >> $GITHUB_STEP_SUMMARY
+      - name: Upload model
+        uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: models/
+      - name: Upload MLflow runs, figures and logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-artifacts
+          path: |
+            mlruns/
+            reports/
+            training.log
+            data/processed/heart_clean.csv
+
+  docker:
+    name: Build image + container smoke test
+    needs: train
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use freshly trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: models/
+      - name: Build image
+        run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
+      - name: Run container
+        run: docker run -d --name api -p 8000:8000 $IMAGE_NAME:latest
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          docker logs api; exit 1
+      - name: Smoke test /predict
+        run: |
+          set -e
+          for f in samples/*.json; do
+            echo "== $f"
+            resp=$(curl -sf -X POST http://localhost:8000/predict -H 'Content-Type: application/json' -d @"$f")
+            echo "$resp"
+            echo "$resp" | python -c "import json,sys; r=json.load(sys.stdin); assert r['prediction'] in (0,1) and 0.5<=r['confidence']<=1"
+          done
+          # invalid payload must be rejected
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/predict -H 'Content-Type: application/json' -d '{"age": 5}')
+          test "$code" = "422"
+          curl -sf http://localhost:8000/metrics | grep heartrisk_predictions_total
+      - name: Container logs
+        if: always()
+        run: docker logs api > container.log 2>&1; cat container.log
+      - name: Save image
+        run: docker save $IMAGE_NAME:latest | gzip > image.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docker-image-and-logs
+          path: |
+            image.tar.gz
+            container.log
+          retention-days: 7

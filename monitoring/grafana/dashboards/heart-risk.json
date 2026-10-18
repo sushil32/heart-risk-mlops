@@ -1,0 +1,78 @@
+{
+  "uid": "heart-risk-api",
+  "title": "Heart Risk API - Service & Model Monitoring",
+  "tags": ["mlops", "heart-risk"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Requests / sec",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(heartrisk_http_requests_total{path!=\"/metrics\"}[1m]))" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 } }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Error rate (5xx + 4xx)",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(heartrisk_http_requests_total{status=~\"4..|5..\"}[1m])) / clamp_min(sum(rate(heartrisk_http_requests_total[1m])), 1e-9)" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.05 }, { "color": "red", "value": 0.2 } ] } } }
+    },
+    {
+      "id": 3, "type": "stat", "title": "p95 latency /predict",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(heartrisk_http_request_duration_seconds_bucket{path=\"/predict\"}[1m])))" }],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 3 } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Total predictions",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(heartrisk_predictions_total)" }]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Requests by path & status",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (path, status) (rate(heartrisk_http_requests_total{path!=\"/metrics\"}[1m]))", "legendFormat": "{{path}} {{status}}" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Latency percentiles (/predict)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(heartrisk_http_request_duration_seconds_bucket{path=\"/predict\"}[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(heartrisk_http_request_duration_seconds_bucket{path=\"/predict\"}[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(heartrisk_http_request_duration_seconds_bucket{path=\"/predict\"}[1m])))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 7, "type": "piechart", "title": "Predicted class mix",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (label) (heartrisk_predictions_total)", "legendFormat": "{{label}}", "instant": true }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Positive (disease) prediction rate - drift signal",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(heartrisk_predictions_total{label=\"heart_disease\"}[5m])) / clamp_min(sum(rate(heartrisk_predictions_total[5m])), 1e-9)", "legendFormat": "positive rate" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } }
+    },
+    {
+      "id": 9, "type": "bargauge", "title": "Prediction confidence distribution",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (le) (increase(heartrisk_prediction_confidence_bucket[15m]))", "legendFormat": "<= {{le}}", "format": "heatmap", "instant": true }],
+      "options": { "orientation": "horizontal", "displayMode": "gradient" }
+    }
+  ]
+}

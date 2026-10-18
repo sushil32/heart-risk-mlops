@@ -1,0 +1,21 @@
+# Optional: Ingress route (requires an ingress controller, e.g. ingress-nginx:
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/cloud/deploy.yaml
+# then add "127.0.0.1 heart-risk.local" to /etc/hosts and open http://heart-risk.local/docs
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: heart-risk-api
+  namespace: heart-risk
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: heart-risk.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: heart-risk-api
+                port:
+                  name: http

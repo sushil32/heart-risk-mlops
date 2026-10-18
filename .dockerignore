@@ -1,0 +1,7 @@
+*
+!requirements-serve.txt
+!pyproject.toml
+!src/
+!models/model.joblib
+!models/metadata.json
+**/__pycache__
