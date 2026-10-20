@@ -17,6 +17,7 @@ Prometheus and Grafana.
 | Item | Value |
 |---|---|
 | Code repository | `https://github.com/sushil32/heart-risk-mlops` |
+| Video walkthrough | [Google Drive Video Link](https://drive.google.com/file/d/1B5Q_ZFFDnhU_ME6vB6uXpXcSQjFW-JAG/view?usp=sharing) (`https://drive.google.com/file/d/1B5Q_ZFFDnhU_ME6vB6uXpXcSQjFW-JAG/view?usp=sharing`) |
 | Champion model | Logistic Regression (C = 1.0, class_weight = balanced) |
 | Cross-validated ROC-AUC (5-fold, train split) | **0.908** |
 | Hold-out test ROC-AUC / accuracy / recall | **0.960 / 0.902 / 0.929** |
@@ -304,5 +305,6 @@ configurable share of invalid payloads, which is how the screenshot below was pr
 | Deployment manifests | `k8s/` |
 | Monitoring | `docker-compose.yml`, `monitoring/` |
 | Screenshots | `screenshots/` |
-| Report | `REPORT.md`, `report/REPORT.docx` |
+| Report | `REPORT.md`, `report/REPORT.pdf`, `report/REPORT.docx` |
+| Video demonstration | [Google Drive Video](https://drive.google.com/file/d/1B5Q_ZFFDnhU_ME6vB6uXpXcSQjFW-JAG/view?usp=sharing) (`https://drive.google.com/file/d/1B5Q_ZFFDnhU_ME6vB6uXpXcSQjFW-JAG/view?usp=sharing`) |
 | Access instructions | `README.md` sections 4–6 |
