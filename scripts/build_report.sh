@@ -84,6 +84,6 @@ pre code {
 EOF
 
 pandoc REPORT.md --embed-resources --standalone --css=/tmp/report_build/style.css -o /tmp/report_build/report.html
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --print-to-pdf="report/REPORT.pdf" "file:///tmp/report_build/report.html" 2>&1 | tail -2
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="report/REPORT.pdf" "file:///tmp/report_build/report.html" 2>&1 | tail -2
 rm -rf /tmp/report_build
 echo "wrote report/REPORT.pdf"
