@@ -16,3 +16,7 @@ build/
 # Local video scripts
 VIDEO_SCRIPT.*
 report/VIDEO_SCRIPT.*
+
+# Local submission archive
+submission/
+*.zip

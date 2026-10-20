@@ -1,0 +1,57 @@
+================================================================================
+BITS PILANI - WORK INTEGRATED LEARNING PROGRAMMES (WILP)
+M.Tech in Artificial Intelligence & Machine Learning
+Course: Machine Learning Operations (MLOps) [AIMLCZG523]
+Assignment 01: End-to-End ML Model Development, CI/CD, and Production Deployment
+================================================================================
+
+Student Name   : Sushil Dubey
+Project Title  : Heart Disease Risk Prediction – End-to-End MLOps Pipeline
+Dataset        : UCI Heart Disease (Cleveland subset)
+
+--------------------------------------------------------------------------------
+1. KEY SUBMISSION LINKS
+--------------------------------------------------------------------------------
+- GitHub Repository : https://github.com/sushil32/heart-risk-mlops
+- Video Walkthrough : https://drive.google.com/file/d/1B5Q_ZFFDnhU_ME6vB6uXpXcSQjFW-JAG/view?usp=sharing
+
+--------------------------------------------------------------------------------
+2. SUMMARY OF DELIVERABLES
+--------------------------------------------------------------------------------
+- Report File      : REPORT.pdf (14 pages, fully comprehensive with 15 screenshots/figures)
+- Champion Model   : Logistic Regression (C=1.0, class_weight='balanced')
+- Evaluation Score : 5-Fold CV ROC-AUC: 0.908 | Test ROC-AUC: 0.960 | Accuracy: 90.2% | Recall: 92.9%
+- Experiment Log   : MLflow tracking with 32 logged runs (hyperparameter tuning across 4 models)
+- Automated Tests  : 24/24 passing unit tests (Pytest + coverage)
+- CI/CD Automation : GitHub Actions workflow (linting, tests, training verification, image build)
+- Serving API      : Dockerized FastAPI with /predict, /health, /metrics endpoints
+- Orchestration    : Production Kubernetes manifests (Deployment, LoadBalancer, HPA 2-5 replicas)
+- Observability    : Prometheus scraping + Grafana monitoring dashboard (9 metrics panels)
+
+--------------------------------------------------------------------------------
+3. LOCAL REPRODUCTION / VERIFICATION STEPS
+--------------------------------------------------------------------------------
+Step 1: Clone repository
+  git clone https://github.com/sushil32/heart-risk-mlops.git
+  cd heart-risk-mlops
+
+Step 2: Start services via Docker Compose
+  docker compose up -d --build
+
+Step 3: Test prediction endpoint
+  curl -s -X POST http://localhost:8000/predict \
+    -H 'Content-Type: application/json' \
+    -d @samples/patient_low_risk.json
+
+Step 4: Verify monitoring & dashboard
+  - FastAPI Docs : http://localhost:8000/docs
+  - Prometheus   : http://localhost:9090
+  - Grafana      : http://localhost:3000  (Credentials: admin / admin)
+  - MLflow UI    : mlflow ui --port 5000
+
+Step 5: Run Kubernetes cluster deployment (optional)
+  ./scripts/deploy_k8s.sh
+  curl -s -X POST http://localhost:8080/predict \
+    -H 'Content-Type: application/json' \
+    -d @samples/patient_low_risk.json
+================================================================================
